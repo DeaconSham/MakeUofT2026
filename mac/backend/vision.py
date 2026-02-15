@@ -1,7 +1,7 @@
 import cv2
 import requests
 import numpy as np
-from flask import Flask, request
+from flask import Flask, request, Response
 import threading
 import time
 from PIL import Image
@@ -9,7 +9,7 @@ from ultralytics import YOLO
 
 VISION_SERVER_HOST = '0.0.0.0'
 VISION_SERVER_PORT = 5001
-BACKEND_URL = "http://localhost:5000/resource_found"
+BACKEND_URL = "http://localhost:5002/resource_found"
 
 CONFIDENCE_THRESHOLD = 0.5
 DETECTION_INTERVAL = 0.5
@@ -19,6 +19,7 @@ TARGET_OBJECTS = [
 ]
 
 latest_frame = None
+latest_annotated_frame = None
 frame_lock = threading.Lock()
 model = None
 last_detection_time = 0
@@ -68,10 +69,14 @@ def health():
     return {"status": "running", "model_loaded": model is not None}, 200
 
 def process_detections(results):
+    global latest_annotated_frame
     detected_objects = []
     
     # YOLO26 results format
     for result in results:
+        # Store annotated frame for web viewing
+        latest_annotated_frame = result.plot()
+        
         boxes = result.boxes
         for box in boxes:
             # Get class name and confidence
@@ -119,29 +124,24 @@ def detection_loop():
             print(f"Detection error: {e}")
             time.sleep(1)
 
-def show_detections_window():
-    global latest_frame
+@app.route('/get_frame', methods=['GET'])
+def get_frame():
+    """Return the latest annotated frame as JPEG"""
+    global latest_annotated_frame
     
-    while True:
-        try:
-            with frame_lock:
-                if latest_frame is None:
-                    time.sleep(0.1)
-                    continue
-                frame = latest_frame.copy()
-            
-            results = model(frame)
-            # YOLO26 uses plot() method for annotated visualization
-            rendered_frame = results[0].plot()
-            cv2.imshow('Robot Vision', rendered_frame)
-            
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        except Exception as e:
-            print(f"Visualization error: {e}")
-            time.sleep(1)
+    if latest_annotated_frame is None:
+        # Create placeholder
+        placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.putText(placeholder, "Waiting for camera...", (150, 240),
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        ret, jpeg = cv2.imencode('.jpg', placeholder)
+    else:
+        ret, jpeg = cv2.imencode('.jpg', latest_annotated_frame)
     
-    cv2.destroyAllWindows()
+    if not ret:
+        return {"status": "error"}, 500
+    
+    return Response(jpeg.tobytes(), mimetype='image/jpeg')
 
 def main():
     if not load_yolo_model():
@@ -153,9 +153,8 @@ def main():
     detection_thread = threading.Thread(target=detection_loop, daemon=True)
     detection_thread.start()
     
-    # Uncomment to enable visualization:
-    # viz_thread = threading.Thread(target=show_detections_window, daemon=True)
-    # viz_thread.start()
+    print("📷 Camera viewer available at: http://localhost:5001/get_frame")
+    print("   Or visit: http://172.20.10.3:5001/get_frame")
     
     try:
         app.run(host=VISION_SERVER_HOST, port=VISION_SERVER_PORT, threaded=True)

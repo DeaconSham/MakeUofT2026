@@ -39,6 +39,7 @@ def is_new_discovery(new_label, new_x, new_y, threshold=15.0):
 # NEW: Endpoint for vision.py to report resources
 @app.route('/resource_found', methods=['POST'])
 def resource_found():
+    import datetime
     data = request.json
     # Grab the 'label' from the vision script
     label_text = data.get("label", "Unknown Object").upper()
@@ -48,10 +49,11 @@ def resource_found():
         new_item = {
             "x": curr_x, 
             "y": curr_y,
-            "label": label_text
+            "label": label_text,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         state["resources"].append(new_item)
-        print(f"NEW LOG: {label_text} at ({curr_x}, {curr_y})")
+        print(f"NEW LOG: {label_text} at ({curr_x}, {curr_y}) @ {new_item['timestamp']}")
         return jsonify({"status": "added"})
     return jsonify({"status": "text mapped"})
 
@@ -63,4 +65,4 @@ def get_telemetry():
 
 if __name__ == "__main__":
     # Use 0.0.0.0 so you can access the map from your laptop IP
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5002)

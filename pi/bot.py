@@ -43,12 +43,17 @@ def motor_control(left, right):
     right_dir1.value = 1 if final_right > 0 else 0
     right_dir2.value = 0 if final_right > 0 else 1
 
-def update_map(dist_moved, angle_change=0):
+def update_map(dist_moved, angle_change=0, dx=None, dy=None):
     global x, y, heading
     heading = (heading + angle_change) % 360
-    rad = math.radians(heading)
-    x += dist_moved * math.cos(rad)
-    y += dist_moved * math.sin(rad)
+    
+    if dx is not None and dy is not None:
+        x += dx
+        y += dy
+    else:
+        rad = math.radians(heading)
+        x += dist_moved * math.cos(rad)
+        y += dist_moved * math.sin(rad)
     
     try:
         requests.post(FLASK_URL, json={'x': round(x, 2), 'y': round(y, 2), 'h': heading}, timeout=0.1)
@@ -56,6 +61,13 @@ def update_map(dist_moved, angle_change=0):
         pass
 
 
+
+# --- GYRO HELPER ---
+def get_gyro_z():
+    try:
+        return imu.get_gyro_data()['z']
+    except OSError:
+        return 0
 
 # --- CALIBRATION ---
 TIME_LEFT_90 = 0.94   # Time for a 90-deg turn to the LEFT (decrease if turns left too much)
@@ -78,7 +90,7 @@ def turn_degrees(target_deg):
     while (time.time() - start_time) < duration:
         current_time = time.time()
         dt = current_time - last_time
-        gyro_z = imu.get_gyro_data()['z'] 
+        gyro_z = get_gyro_z()
         
         if abs(gyro_z) < 0.2: gyro_z = 0 
         total_rotated += gyro_z * dt
@@ -104,21 +116,38 @@ def area_search():
                 motor_control(0.5, 0.5)
                 step_time = 0.2
                 start_step = time.time()
+                
                 step_rotation = 0
+                step_dx = 0
+                step_dy = 0
+                
                 last_t = start_step
                 
                 while (time.time() - start_step) < step_time:
                     curr_t = time.time()
                     dt = curr_t - last_t
-                    gyro_z = imu.get_gyro_data()['z']
+                    gyro_z = get_gyro_z()
                     
                     if abs(gyro_z) < 0.2: gyro_z = 0 # Noise gate
-                    step_rotation += gyro_z * dt
+                    
+                    # Calculate integration steps
+                    rotation_delta = gyro_z * dt
+                    step_rotation += rotation_delta
+                    
+                    # Current instantaneous heading (approximate)
+                    # We use the heading at the START of the small step + accumulated rotation
+                    current_inst_heading = (heading + step_rotation) % 360
+                    rad = math.radians(current_inst_heading)
+                    
+                    dist_step = SPEED_CM_S * 0.5 * dt
+                    step_dx += dist_step * math.cos(rad)
+                    step_dy += dist_step * math.sin(rad)
+                    
                     last_t = curr_t
                     time.sleep(0.01)
                 
-                # Update map with actual distance and the drift recorded
-                update_map(SPEED_CM_S * 0.5 * step_time, step_rotation)
+                # Update map with actual integrated distance and rotation
+                update_map(0, step_rotation, dx=step_dx, dy=step_dy)
                 # --- END STRAIGHT MOVE ---
 
             else:

@@ -143,6 +143,33 @@ def get_frame():
     
     return Response(jpeg.tobytes(), mimetype='image/jpeg')
 
+def generate_frames():
+    """Generator function for MJPEG streaming"""
+    global latest_annotated_frame
+    
+    while True:
+        if latest_annotated_frame is None:
+            # Create placeholder
+            placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(placeholder, "Waiting for camera...", (150, 240),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            ret, jpeg = cv2.imencode('.jpg', placeholder)
+        else:
+            ret, jpeg = cv2.imencode('.jpg', latest_annotated_frame)
+        
+        if ret:
+            frame_bytes = jpeg.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        
+        time.sleep(0.033)  # ~30 FPS
+
+@app.route('/video_feed', methods=['GET'])
+def video_feed():
+    """Live MJPEG stream endpoint"""
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 def main():
     if not load_yolo_model():
         return

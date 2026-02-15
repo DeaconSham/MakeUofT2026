@@ -27,7 +27,7 @@ x, y = 0.0, 0.0
 heading = 0.0
 search_phase = "STRAIGHT" # STRAIGHT, TURN_1, SHIFT, TURN_2
 #DO NOT ADJUST BIAS IF IT GOES STRAIGHT
-LEFT_MOTOR_BIAS = 0.98  # The left motor will only run at 91.5% of the requested speed (lower if too strong, higher if too weak)
+LEFT_MOTOR_BIAS = 0.96  # The left motor will only run at 91.5% of the requested speed (lower if too strong, higher if too weak)
 RIGHT_MOTOR_BIAS = 1.00  # The right motor runs at 100%
 
 def motor_control(left, right):
@@ -60,19 +60,17 @@ def update_map(dist_moved, angle_change=0):
 # --- CALIBRATION ---
 TIME_LEFT_90 = 0.94   # Time for a 90-deg turn to the LEFT (decrease if turns left too much)
 TIME_RIGHT_90 = 0.90  # Time for a 90-deg turn to the RIGHT (decrease if right turn too much)
-
- 
 def turn_degrees(target_deg):
     if target_deg > 0:
         magic_number = TIME_LEFT_90
-        motor_control(-TURN_SPEED, TURN_SPEED) # Swing turn left
+        motor_control(-TURN_SPEED, TURN_SPEED) # Pivot Left
     else:
         magic_number = TIME_RIGHT_90
-        motor_control(TURN_SPEED, -TURN_SPEED) # Swing turn right
+        motor_control(TURN_SPEED, -TURN_SPEED) # Pivot Right
 
     duration = abs(target_deg / 90.0) * magic_number
     
-    # --- GYRO MEASUREMENT START ---
+    # --- LIVE GYRO TRACKING DURING TURN ---
     start_time = time.time()
     total_rotated = 0
     last_time = start_time
@@ -80,55 +78,67 @@ def turn_degrees(target_deg):
     while (time.time() - start_time) < duration:
         current_time = time.time()
         dt = current_time - last_time
-        
-        # Read the Z-axis (yaw) angular velocity
         gyro_z = imu.get_gyro_data()['z'] 
         
-        # Integrate velocity to get degrees: change = velocity * time
+        if abs(gyro_z) < 0.2: gyro_z = 0 
         total_rotated += gyro_z * dt
         
         last_time = current_time
-        time.sleep(0.01) # High frequency sampling for accuracy
+        time.sleep(0.01)
     
     motor_control(0, 0)
     
-    # Instead of telling the map "target_deg", tell it what the GYRO saw!
-    # Note: Gyro values might need a minus sign depending on orientation
-    print(f"Target: {target_deg}, Gyro measured: {total_rotated}")
+    # CRITICAL CHANGE: Tell the map what actually happened
+    print(f"Target: {target_deg}, Actual: {total_rotated}")
     update_map(0, total_rotated)
-
 def area_search():
-    global search_phase
-    turn_direction = 90 # Alternates between 90 and -90 to snake
+    # Delete search_phase, keep turn_direction
+    turn_direction = 90 
     
     try:
         while True:
             dist = sensor.distance * 100
             
-            if dist > 25: # Path is clear
+            if dist > 25: 
+                # --- START STRAIGHT MOVE WITH DRIFT TRACKING ---
                 motor_control(0.5, 0.5)
                 step_time = 0.2
-                update_map(SPEED_CM_S * 0.5 * step_time)
-                time.sleep(step_time)
+                start_step = time.time()
+                step_rotation = 0
+                last_t = start_step
+                
+                while (time.time() - start_step) < step_time:
+                    curr_t = time.time()
+                    dt = curr_t - last_t
+                    gyro_z = imu.get_gyro_data()['z']
+                    
+                    if abs(gyro_z) < 0.2: gyro_z = 0 # Noise gate
+                    step_rotation += gyro_z * dt
+                    last_t = curr_t
+                    time.sleep(0.01)
+                
+                # Update map with actual distance and the drift recorded
+                update_map(SPEED_CM_S * 0.5 * step_time, step_rotation)
+                # --- END STRAIGHT MOVE ---
+
             else:
-                # 1. Obstacle Detected: Stop
                 motor_control(0, 0)
-                print("Wall detected. Shifting to next lane...")
+                print("Wall detected. Shifting...")
                 
-                # 2. Perform 'S-Turn' to start next lane
-                turn_degrees(turn_direction)  # Turn 90
+                turn_degrees(turn_direction)  # First turn
                 
-                # Move sideways a bit (the width of the robot)
+                # Move sideways (shifting lanes)
                 motor_control(0.5, 0.5)
                 time.sleep(1.0) 
-                update_map(SPEED_CM_S * 0.5 * 1.0)
+                update_map(SPEED_CM_S * 0.5 * 1.0, 0) 
                 
-                turn_degrees(turn_direction)  # Turn another 90
+                turn_degrees(turn_direction)  # Second turn
                 
-                # 3. Flip direction for next lane
-                turn_direction *= -1 
-                
+                turn_direction *= -1 # Switch Left/Right for next time
+
     except KeyboardInterrupt:
+        # This is the "catch" for your try block!
+        print("Scout stopping...")
         motor_control(0, 0)
 
 if __name__ == "__main__":

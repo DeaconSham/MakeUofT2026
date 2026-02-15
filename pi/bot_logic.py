@@ -18,16 +18,17 @@ imu = mpu6050(0x68)
 
 # --- NAVIGATION CONSTANTS ---
 SPEED_CM_S = 15.0     # Adjust based on your calibration
-TURN_SPEED = 0.6      # Speed for turning
-FLASK_URL = "http://localhost:5000/update_location"
+TURN_SPEED = 0.42      # Speed for turning
+MAC_BACKEND_IP = "172.20.10.3"  # Your Mac's IP address
+FLASK_URL = f"http://{MAC_BACKEND_IP}:5002/update_location"
 
 # --- STATE VARIABLES ---
 x, y = 0.0, 0.0
 heading = 0.0
 search_phase = "STRAIGHT" # STRAIGHT, TURN_1, SHIFT, TURN_2
 #DO NOT ADJUST BIAS IF IT GOES STRAIGHT
-LEFT_MOTOR_BIAS = 0.85  # The left motor will only run at 85% of the requested speed (lower if too strong, higher if too weak)
-RIGHT_MOTOR_BIAS = 1.0  # The right motor runs at 100%
+LEFT_MOTOR_BIAS = 0.98  # The left motor will only run at 91.5% of the requested speed (lower if too strong, higher if too weak)
+RIGHT_MOTOR_BIAS = 1.00  # The right motor runs at 100%
 
 def motor_control(left, right):
     # Apply the bias to the inputs
@@ -57,9 +58,8 @@ def update_map(dist_moved, angle_change=0):
 
 
 # --- CALIBRATION ---
-TIME_LEFT_90 = 0.82   # Time for a 90-deg turn to the LEFT (decrease if turns left too much)
-TIME_RIGHT_90 = 0.78  # Time for a 90-deg turn to the RIGHT (decrease if right turn too much)
-# 90 degrees is left, -90 is right
+TIME_LEFT_90 = 0.94   # Time for a 90-deg turn to the LEFT (decrease if turns left too much)
+TIME_RIGHT_90 = 0.90  # Time for a 90-deg turn to the RIGHT (decrease if right turn too much)
 def turn_degrees(target_deg):
     # Select the magic number based on direction
     if target_deg > 0:
@@ -68,9 +68,12 @@ def turn_degrees(target_deg):
         magic_number = TIME_RIGHT_90
         
     duration = abs(target_deg / 90.0) * magic_number
-    direction = 1 if target_deg > 0 else -1
+    #direction = 1 if target_deg > 0 else -1
     
-    motor_control(-TURN_SPEED * direction, TURN_SPEED * direction)
+    if target_deg > 0:
+        motor_control(0, TURN_SPEED )
+    else:
+        motor_control(TURN_SPEED , 0)
     time.sleep(duration)
     motor_control(0, 0)
     update_map(0, target_deg)

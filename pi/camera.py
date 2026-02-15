@@ -7,21 +7,22 @@ try:
 except ImportError:
     import cv2
 
-MAC_VISION_SERVER_IP = "192.168.1.100"  # Update with your Mac's IP
+MAC_VISION_SERVER_IP = "172.20.10.3" 
 MAC_VISION_SERVER_PORT = 5001
 VISION_SERVER_URL = f"http://{MAC_VISION_SERVER_IP}:{MAC_VISION_SERVER_PORT}/upload_frame"
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-FRAME_RATE = 2
+FRAME_RATE = 10
 JPEG_QUALITY = 75
 
 def init_picamera():
     try:
         camera = Picamera2()
+        # CHANGED: Set flips to True to correct upside-down camera
         config = camera.create_still_configuration(
             main={"size": (FRAME_WIDTH, FRAME_HEIGHT)},
-            transform=Transform(hflip=False, vflip=False)
+            transform=Transform(hflip=True, vflip=True)
         )
         camera.configure(config)
         camera.start()
@@ -114,7 +115,8 @@ def main():
         while True:
             start_time = time.time()
             
-            if capture_func():
+            # FIXED: Added 'camera' argument here
+            if capture_func(camera):
                 success_count += 1
             
             frame_count += 1

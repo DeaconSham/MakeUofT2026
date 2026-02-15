@@ -21,10 +21,10 @@ async function updateData() {
         const data = await response.json();
 
         // Update robot position
-        robotPath.push({x: data.x, y: data.y});
-        
+        robotPath.push({ x: data.x, y: data.y });
+
         // Sync the resource list
-        resources = data.resources; 
+        resources = data.resources;
 
         render();
     } catch (e) { console.log("Searching for Scout..."); }
@@ -46,22 +46,40 @@ function render() {
     });
     ctx.stroke();
 
-    // 2. Draw Resources
-    // 2. Draw Object Labels
-    ctx.font = "bold 14px 'Courier New'";
+    // 2. Draw Object Markers with Labels
+    ctx.font = "bold 12px 'Courier New'";
     resources.forEach(res => {
         const rx = centerX + (res.x * scale);
         const ry = centerY - (res.y * scale);
-        
-        // Draw a small marker dot
-        ctx.fillStyle = "#ffff00"; // Bright yellow for visibility
-        ctx.beginPath();
-        ctx.arc(rx, ry, 4, 0, Math.PI * 2);
-        ctx.fill();
 
-        // Draw the label text next to the dot
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(res.label, rx + 8, ry + 4);
+        // Draw marker dot with glow effect
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#00ff00";
+        ctx.fillStyle = "#00ff00";
+        ctx.beginPath();
+        ctx.arc(rx, ry, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Draw label background
+        const labelText = `${res.label}`;
+        const posText = `(${res.x}, ${res.y})`;
+        const timeText = res.timestamp ? res.timestamp.split(' ')[1] : ''; // Just show time
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(rx + 10, ry - 25, 120, 40);
+
+        // Draw label text
+        ctx.font = "bold 11px 'Courier New'";
+        ctx.fillStyle = "#00ff00";
+        ctx.fillText(labelText, rx + 15, ry - 12);
+
+        ctx.font = "9px 'Courier New'";
+        ctx.fillStyle = "#00cc00";
+        ctx.fillText(posText, rx + 15, ry - 1);
+
+        ctx.fillStyle = "#888888";
+        ctx.fillText(timeText, rx + 15, ry + 10);
     });
 
     // 3. Draw Robot (Current Position)

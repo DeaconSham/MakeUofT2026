@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Pi Camera Viewer</title>
     <style>
@@ -8,36 +9,30 @@
             padding: 20px;
             background: #0a0e27;
             font-family: 'Courier New', monospace;
-            color: #00ff00;
         }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
-        h1 {
-            text-align: center;
-            color: #00ff00;
-            text-shadow: 0 0 10px #00ff00;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            text-align: center;
-            color: #00cc00;
-            margin-bottom: 30px;
-        }
+
+
+
         .video-container {
             position: relative;
             background: #000;
-            border: 3px solid #00ff00;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            border: 3px solid #000000;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
             margin: 20px auto;
             max-width: 100%;
         }
+
         img {
             width: 100%;
             height: auto;
             display: block;
         }
+
         .stats {
             background: rgba(0, 0, 0, 0.9);
             border: 2px solid #00ff00;
@@ -46,10 +41,12 @@
             border-radius: 5px;
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
         }
+
         .stats p {
             margin: 8px 0;
             font-size: 16px;
         }
+
         .live-indicator {
             display: inline-block;
             width: 10px;
@@ -59,10 +56,19 @@
             margin-right: 8px;
             animation: pulse 1.5s infinite;
         }
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
         }
+
         .controls {
             text-align: center;
             margin: 20px 0;
@@ -70,35 +76,20 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>🎥 Pi Camera Live Feed</h1>
-        <p class="subtitle">YOLO26 Object Detection</p>
-        
-        <div class="stats">
-            <p><span class="live-indicator"></span><strong>Status:</strong> Live Feed</p>
-            <p>📊 <strong>Resolution:</strong> 640x480</p>
-            <p>🎯 <strong>Model:</strong> YOLO26n (Nano)</p>
-            <p>🔄 <strong>Refresh Rate:</strong> ~2 FPS</p>
-            <p>💡 <strong>Detections:</strong> Bottles, Cups, Laptops, Phones, Books, Persons, Chairs, etc.</p>
-        </div>
-        
         <div class="video-container">
             <img id="cameraFeed" src="http://localhost:5001/get_frame" alt="Camera Feed">
         </div>
-        
-        <div class="controls">
-            <p>🔴 Live from Raspberry Pi Camera</p>
-            <p>Green boxes indicate detected objects with confidence scores</p>
-        </div>
-    </div>
-    
-    <script>
-        // Auto-refresh the image every 500ms
-        const img = document.getElementById('cameraFeed');
-        setInterval(() => {
-            img.src = 'http://localhost:5001/get_frame?t=' + new Date().getTime();
-        }, 500);
-    </script>
+
+        <script>
+            // Auto-refresh the image every 500ms
+            const img = document.getElementById('cameraFeed');
+            setInterval(() => {
+                img.src = 'http://localhost:5001/get_frame?t=' + new Date().getTime();
+            }, 500);
+        </script>
 </body>
+
 </html>

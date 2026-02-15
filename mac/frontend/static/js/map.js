@@ -34,59 +34,41 @@ function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid();
 
-    // 1. Draw Path (Green Line)
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    robotPath.forEach((p, i) => {
-        const sx = centerX + (p.x * scale);
-        const sy = centerY - (p.y * scale); // Subtract because Y is up in math but down in JS
-        if (i === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
-    });
-    ctx.stroke();
-
-    // 2. Draw Object Markers with Labels
-    ctx.font = "bold 12px 'Courier New'";
+    // 1. Draw Resources (The "Points of Interest")
+    ctx.font = "bold 14px 'Courier New'";
     resources.forEach(res => {
         const rx = centerX + (res.x * scale);
         const ry = centerY - (res.y * scale);
-
-        // Draw marker dot with glow effect
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#00ff00";
-        ctx.fillStyle = "#00ff00";
+        
+        ctx.fillStyle = "#ffff00"; // Yellow for resources
         ctx.beginPath();
-        ctx.arc(rx, ry, 6, 0, Math.PI * 2);
+        ctx.arc(rx, ry, 4, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
 
-        // Draw label background
-        const labelText = `${res.label}`;
-        const posText = `(${res.x}, ${res.y})`;
-        const timeText = res.timestamp ? res.timestamp.split(' ')[1] : ''; // Just show time
-
-        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-        ctx.fillRect(rx + 10, ry - 25, 120, 40);
-
-        // Draw label text
-        ctx.font = "bold 11px 'Courier New'";
-        ctx.fillStyle = "#00ff00";
-        ctx.fillText(labelText, rx + 15, ry - 12);
-
-        ctx.font = "9px 'Courier New'";
-        ctx.fillStyle = "#00cc00";
-        ctx.fillText(posText, rx + 15, ry - 1);
-
-        ctx.fillStyle = "#888888";
-        ctx.fillText(timeText, rx + 15, ry + 10);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(res.label, rx + 8, ry + 4);
     });
 
-    // 3. Draw Robot (Current Position)
-    const current = robotPath[robotPath.length - 1];
+    // 2. Draw Robot (The "GPS Dot")
+    const current = robotPath[robotPath.length - 1]; // Get only the latest position
     if (current) {
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(centerX + (current.x * scale) - 5, centerY - (current.y * scale) - 5, 10, 10);
+        const rx = centerX + (current.x * scale);
+        const ry = centerY - (current.y * scale);
+
+        // Draw a glowing "GPS" style dot
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#00ff00";
+        ctx.fillStyle = '#00ff00'; // Green for the robot
+        ctx.beginPath();
+        ctx.arc(rx, ry, 8, 0, Math.PI * 2); // A circle looks more like a GPS dot than a square
+        ctx.fill();
+        
+        // Reset shadow so it doesn't affect other drawings
+        ctx.shadowBlur = 0;
+
+        // Label the robot
+        ctx.fillStyle = "#00ff00";
+        ctx.fillText("SCOUT-01", rx + 12, ry - 12);
     }
 }
 

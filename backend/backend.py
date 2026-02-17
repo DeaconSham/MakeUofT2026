@@ -17,7 +17,6 @@ state = {
 def index():
     return render_template('index.html')
 
-# Endpoint for bot_logic.py to update movement
 @app.route('/update_location', methods=['POST'])
 def update_location():
     data = request.json
@@ -25,6 +24,16 @@ def update_location():
     state["y"] = data.get("y", 0)
     state["h"] = data.get("h", 0)
     return jsonify({"status": "ok"})
+
+# NEW: Reset endpoint
+@app.route('/reset', methods=['POST'])
+def reset():
+    state["x"] = 0
+    state["y"] = 0
+    state["h"] = 0
+    state["resources"] = []
+    # Also clear any accumulated path history if stored in global state (currently handled by client)
+    return jsonify({"status": "reset"})
 
 # Add this at the top of app.py
 def is_new_discovery(new_label, new_x, new_y, threshold=15.0):
